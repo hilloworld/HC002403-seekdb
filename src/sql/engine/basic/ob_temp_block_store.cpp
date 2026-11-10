@@ -1293,7 +1293,13 @@ void ObTempBlockStore::BlockReader::reset()
      * 2. aio_buf_[N].data() may have same ptr as buf_.data(); shoudn't free twice
      */
     if (read_io_handle_ != NULL) {
-      read_io_handle_->reset();
+      /*
+       * read_io_handle_ is placement-constructed in get_read_io_handler() and owns a
+       * separately allocated private implementation. Calling reset() and then freeing
+       * the outer storage skips the destructor, so the implementation leaks on every
+       * reset or reader destruction. Destroy the handle before releasing its storage.
+       */
+      read_io_handle_->~ObTmpFileIOHandle();
       ob_free(read_io_handle_);
       read_io_handle_ = NULL;
     }
